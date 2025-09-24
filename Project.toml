@@ -1,7 +1,7 @@
 name = "ManufacturedSolutions"
 uuid = "46fab770-a24b-40c2-a49c-65d2c37a0689"
 authors = ["Marvyn Bailly <marvyn@marvyn.com>"]
-version = "0.1.0" 
+version = "0.2.0" 
 repo = "https://github.com/MarvynBailly/ManufacturedSolutions.jl"
 
 [compat]
