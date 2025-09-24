@@ -25,7 +25,7 @@ makedocs(
 )
 
 deploydocs(
-    repo      = "github.com/MarvynBailly/ManufacturedSolutions",
+    repo      = "github.com/MarvynBailly/ManufacturedSolutions.jl",
     devbranch = "main",
     versions = ["stable" => "v^", "v#.#.#"] 
 )
