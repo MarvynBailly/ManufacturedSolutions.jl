@@ -10,7 +10,7 @@ makedocs(
     authors  = "Marvyn Bailly",
     format   = Documenter.HTML(
         prettyurls = get(ENV, "CI", "false") == "true",
-        canonical = "https://MarvynBailly.github.io/ManufacturedSolutions/stable/",
+        canonical = "https://MarvynBailly.github.io/ManufacturedSolutions.jl;/stable/",
         assets=String[],
     ),
     
