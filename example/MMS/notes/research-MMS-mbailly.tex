@@ -1,0 +1,162 @@
+%ctrl + shift + p to get command line -> snippets -> latex.json
+\documentclass[12pt]{report}
+\usepackage{../../../!TexStuff/commands}
+
+\begin{document}
+
+\large
+\begin{center}
+Code Verification via Method of Manufactured Solutions\\
+By Marvyn Bailly \\
+\end{center}
+\normalsize
+\hrule
+
+
+
+\section{Recreating Results}
+Let's begin by trying to recreate the Code Verification through the Method of Manufactured Solutions (MMS). The paper is "Code Verification by the Method of Manufactured Solutions" by Patrick Roache.
+
+\subsection{Simple Example}
+Let's begin by considering the simple advection equation
+\begin{equation}\label{trans}
+L(u) \equiv u_t + au_x = 0,
+\end{equation}
+subject to the initial condition $u(x,0) = f(x)$. Using the Method of Characteristics, we know that the true solution to the PDE remains constant along its characteristics, giving rise to the solution $u(x,t) = f(x - at)$ (modulo boundary conditions). Now, we would like to manufacture a solution to $U(x,t)$. While $U(x,t)$ may not be a solution to $L(u)$, it is the solution to $L(u) = Q(x,t)$ where $Q(x,t)$ is a source term that we must determine. That is,
+\begin{equation}\label{manufactured}
+Q(x,t) = L(U(x,t)) = \partial_t U(x,t) + a \partial_x U(x,t).
+\end{equation}
+Now the manufactured solution $U(x,t)$ is a solution to $L(u) = Q(x,t)$ or
+\begin{equation}\label{trans-man}
+    u_t + au_x = Q = \partial_t U(x,t) + a \partial_x U(x,t),
+\end{equation}
+where $U(x,0) = u(x,0) = f(x)$. This means that the manufactured solution must be compatible with the prescribed initial condition. We must also make sure that $U(x,t)$ is consistent with the boundary conditions. For the sake of simplicity, let's prescribe periodic boundary conditions and worry about different types of boundary conditions later.  
+
+\subsubsection{Accuracy}
+Let's test the method using Lax-Friedrichs (LxF) on \ref{trans}. Recall that LxF is given by
+\begin{equation*}
+    v_{\nu}^{n+1} = \frac{1}{2}\paren{v_{\nu+1}^n - v_{\nu-1}^n} - \frac{ka}{h2}\paren{v_{\nu + 1}^n + v_{\nu - 1}^n}.
+\end{equation*}
+Thus LxF applied to \ref{trans-man} yields
+\begin{equation*}
+    v_{\nu}^{n+1} = \frac{1}{2}\paren{v_{\nu+1}^n - v_{\nu-1}^n} - \frac{ka}{h2}\paren{v_{\nu + 1}^n + v_{\nu - 1}^n} + kQ(x,t),
+\end{equation*}
+where $Q(x,t)$ is from \ref{manufactured}. Let's quickly verify that the accuracy LxW applied \ref{trans} (1st order in time and space) is the same as \ref{trans-man}. By Taylor expanding the RHS  in space we get
+\begin{align*}
+    v_{\nu}^{n+1} &= \frac{1}{2}\paren{v_\nu^n + h^2(v_\nu^n)_{xx} + \O(h^3)} - \frac{ka}{h2}\paren{2h(v_\nu^n)_x + 2\frac{h^3}{3!}(v_\nu^n)_{xxx} + \O(h^5)} + kQ(x,t)\\
+    &= v_\nu^n + \frac{h^2}{2}(v_\nu^n)_{xx}-ka\paren{(v_\nu^n)_x + h^2(v_\nu^n)_{xxx}} + kQ(x,t) + \O(h^3).
+\end{align*}
+Now temporally expanding the LHS yields
+\begin{equation*}
+    v_\nu^{n+1} = v_\nu^n + k (v_\nu^n)_{t} + \O(k^2),
+\end{equation*}
+and using \ref{trans-man} we can swap temporal derivatives for spatial yielding
+\begin{equation*}
+    v_\nu^{n+1} = v_\nu^n + k(Q - a(v_\nu^n)_x) + k^2(v_\nu^n)_{tt} + \O(k^3),
+\end{equation*}
+Now subtracting the LHS from the RHS and dropping higher order terms yields
+\begin{align*}
+    \text{LTE} &= \frac{h^2}{2}(v_\nu^n)_{xx} + kh^2(v_\nu^n)_{xxx} + k^2(v_\nu^n)_{tt}\\
+    &= \O(k^2 + h^2).
+\end{align*}
+which aligns with LxF. 
+
+\subsection{Numerical Test}
+Let's use LxF to solve \ref{trans} with $a=4$ subject to $u(x,0) = f(x)$ where $f(x) = \sin(x)$ with $2\pi$-periodic boundary conditions. 
+
+Let's doing it in Julia! Okay the basic solver and example have been set up in \verb+example_working.jl+.
+
+Next, let's create a Julia and use Symbolics.jl to handle the symbolic calculation of the modified solution. Let's create the modified solution
+
+Note: Looks like we can write C code using Julia! \url{https://symbolics.juliasymbolics.org/dev/tutorials/converting_to_C/}
+
+
+\begin{equation*}
+    U(x,t) = \cos(t).
+\end{equation*}
+But we require $U(x,0) = u(x,0) = f(x)$ so for us,
+\begin{align*}
+    U(x,0) = \cos(0) \neq \sin(x),
+\end{align*}
+so let's modify $U(x,t)$ to be
+\begin{equation*}
+    U(x,t) = 1 - \cos(t) + \sin(x) \implies U(x,0) = 1 - \cos(0) + \sin(x) = \sin(x) = f(x) = u(x,0), 
+\end{equation*}
+as desired. Now let's compute $Q(x,t)$ by hand first:
+ \begin{align*}
+    Q(x,t) &\equiv L(U(x,t))\\
+    &\equiv \partial_t U(x,t) + a \partial_x U(x,t)\\
+    &= \pp{}{t}\paren{1 - \cos(t) + \sin(x)} + a \pp{}{x}\paren{1 - \cos(t) + \sin(x)}\\
+    &= \sin(t) + a \cos(x).
+ \end{align*}
+Now we implement the same behavior in Julia using Symbolics.jl
+Now let's implement this into Julia:
+\begin{lstlisting}
+@info("Beginning symbolic fun")
+
+# Define variables
+@variables x,t, u(x,t)
+
+# Define differentials
+Dx = Differential(x)
+Dt = Differential(t)
+
+# Define the PDE
+a = 4
+pde = Dt(u) + a*Dx(u)
+
+# Define manufactured solution
+manu = exp(x*t)*cos(t)*sin(x)
+
+# The manufactured solution is the true solution to the modified PDE
+true_sol = build_function(manu,[x,t], expression=Val{false})
+
+# Substitute manufactured solution into PDE
+Q = substitute(pde, u => manu)
+# simplified_Q = expand_derivatives(Q)
+# println(simplified_Q)
+
+forcing_term = expand_derivatives(Q)
+
+# turn it into a string / Make into whatever we need s.t. we can add it to the lang
+forcing_term_str = string(forcing_term)
+if debug
+    @info("The force terming is given by: Q(x,t)=$forcing_term_str")
+end
+\end{lstlisting} 
+
+Now we want to automatically add the forcing term to the coders script
+\begin{lstlisting}
+@info("Adding the forcing term")
+
+# now let's read in the script
+script_contents = read(file_location, String)
+
+# and search for '# INSERT_FORCING_TERM_HERE
+modified_script_contents = replace(script_contents, "# INSERT_FORCING_TERM_HERE" => "$forcing_term_str")
+
+# AND SEARCH FOR '# INSERT_STOP_TIME_HERE
+modified_script_contents = replace(modified_script_contents, "# INSERT_STOP_TIME_HERE" => "$t_final")
+
+# write the file with the forcing term
+write("modified_script_contents.jl", modified_script_contents)
+\end{lstlisting}
+which searches the user's code for comments \verb+# INSERT_FORCING_TERM_HERE+ and replaces it with the symbolic term.
+
+Now that we have the correct forcing term in the script, we want to run the code for two different grid values. We are aiming to verify the order-of-accuracy of the code. So if $E_1$ and $E_2$ are the global errors corresponding to a grid size of $h$ and $h/r$ respectively, where $r$ is the refinement ratio. If the method is expected to be $p$ accurate, then 
+\begin{equation*}
+    \frac{E_1}{E_2} \leq \paren{\frac{C_1 h^p}{C_2 \frac{h^p}{r^p}}} \approx r^p,
+\end{equation*}
+where $C_1$ and $C_2$ is some constant. Then we have that
+\begin{equation*}
+    p \approx \frac{\log{\paren{\frac{E_1}{E_2}}}}{\log{r}}.
+\end{equation*}
+
+
+
+
+
+
+\end{document}
+
+%heck ya
