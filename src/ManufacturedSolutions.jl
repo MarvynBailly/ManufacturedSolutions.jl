@@ -32,6 +32,7 @@ include("verification/verify.jl")
 include("verification/code_injection_workflow.jl")
 include("verification/unit_test.jl")
 include("verification/simple_unit_test.jl")
+include("verification/convergence_test.jl")
 
 # Main interface
 export verify_solver
@@ -46,5 +47,8 @@ export MMSUnitTest, run_mms_unit_test, @mms_test
 
 # Simple unit testing (function wrapper approach)
 export SimpleMMSTest, run_simple_mms_test, @test_solver
+
+# Convergence-based verification (order of accuracy)
+export ConvergenceTest, run_convergence_test
 
 end

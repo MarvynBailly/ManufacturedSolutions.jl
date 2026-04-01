@@ -1,5 +1,14 @@
 """
 Core type definitions for ManufacturedSolutions.jl
+
+This file defines the fundamental types used throughout the package:
+- Grids: Spatial discretizations (currently 1D uniform grids)
+- Manufactured Solutions: Analytical solutions used for verification
+- Forcing Terms: Right-hand side terms computed from manufactured solutions
+- Results: Data structures for verification results
+
+These types provide a clean interface between the verification framework
+and user-provided solvers.
 """
 
 # ===================================================================
@@ -34,13 +43,33 @@ abstract type AbstractBoundaryCondition end
 """
     Grid1D{T<:Real}
 
-One-dimensional uniform grid.
+A uniformly-spaced one-dimensional grid for spatial discretization.
+
+This is the fundamental spatial discretization used by solvers. It represents
+evenly-spaced points on an interval [a, b].
 
 # Fields
-- `x::Vector{T}`: Grid points
+- `x::Vector{T}`: Coordinates of grid points
 - `nx::Int`: Number of grid points
-- `dx::T`: Grid spacing
+- `dx::T`: Spacing between adjacent points (uniform)
 - `domain::Tuple{T,T}`: Domain boundaries (left, right)
+
+# Constructors
+```julia
+# Create grid with specified number of points
+grid = Grid1D(0.0, 1.0, 101)  # 101 points from 0 to 1
+
+# Create grid with specified spacing
+grid = Grid1D(0.0, 1.0, 0.01)  # spacing h = 0.01
+```
+
+# Example
+```julia
+grid = Grid1D(0.0, 1.0, 0.1)
+# grid.x  = [0.0, 0.1, 0.2, ..., 1.0]
+# grid.nx = 11
+# grid.dx = 0.1
+```
 """
 struct Grid1D{T<:Real} <: AbstractGrid
     x::Vector{T}
@@ -49,9 +78,11 @@ struct Grid1D{T<:Real} <: AbstractGrid
     domain::Tuple{T,T}
     
     function Grid1D(x_left::T, x_right::T, nx::Int) where {T<:Real}
+        # Input validation
         @assert nx > 1 "Grid must have at least 2 points"
         @assert x_right > x_left "Right boundary must be greater than left boundary"
         
+        # Create uniformly spaced points
         x = range(x_left, x_right, length=nx) |> collect
         dx = (x_right - x_left) / (nx - 1)
         
@@ -59,7 +90,8 @@ struct Grid1D{T<:Real} <: AbstractGrid
     end
 end
 
-# Convenience constructor with resolution
+# Alternate constructor: specify spacing instead of number of points
+# Example: Grid1D(0.0, 1.0, 0.01) creates grid with h=0.01
 function Grid1D(x_left::Real, x_right::Real, dx::Real)
     nx = round(Int, (x_right - x_left) / dx) + 1
     Grid1D(promote(x_left, x_right)..., nx)

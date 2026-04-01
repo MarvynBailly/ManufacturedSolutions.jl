@@ -1,10 +1,37 @@
 """
-1D Poisson Solvers for Testing
+Reference 1D Poisson Solvers for MMS Testing
 
-This file contains reference implementations of 1D Poisson solvers
-that can be verified using MMS unit tests.
+This file contains **educational reference implementations** of 1D Poisson
+solvers with different boundary conditions. These are used as test cases to
+demonstrate the Method of Manufactured Solutions framework.
 
-Solves: -u'' = f(x) on [a,b]
+## The Poisson Equation
+
+We solve the 1D Poisson equation:
+    -u''(x) = f(x)  for x ∈ [a, b]
+
+with various boundary conditions:
+- **Dirichlet**: Specify solution values at boundaries (u(a), u(b) given)
+- **Periodic**: Solution wraps around (u(a) = u(b), u'(a) = u'(b))
+- **Neumann**: Specify flux (derivative) at boundaries (u'(a), u'(b) given)
+
+## Discretization
+
+All solvers use **second-order centered finite differences**:
+    u''(x) ≈ [u(x-h) - 2u(x) + u(x+h)] / h²
+
+This leads to a **tridiagonal linear system** Au = f that we solve directly.
+
+## Why These Solvers?
+
+These are intentionally simple, well-tested implementations that:
+1. Demonstrate correct numerical methods
+2. Achieve expected second-order accuracy
+3. Serve as reference solutions for MMS verification
+4. Show how to handle different boundary conditions
+
+If your solver fails MMS tests but these pass, the issue is in your implementation,
+not in the verification framework!
 """
 
 using LinearAlgebra
@@ -12,35 +39,69 @@ using LinearAlgebra
 """
     poisson_solver_dirichlet(grid::Grid1D, forcing::ForcingTerm)
 
-Simple 1D Poisson solver with Dirichlet boundary conditions.
+Solve the 1D Poisson equation with **Dirichlet (fixed value) boundary conditions**.
 
-Solves: -u'' = f on [a,b] with u(a) = u(b) = 0
+## Problem
+    -u''(x) = f(x)  for x ∈ [a, b]
+    u(a) = 0,  u(b) = 0
 
-Uses centered finite differences with second-order accuracy.
+## Method
+Uses **centered finite differences** with second-order accuracy:
+    -u''(x) ≈ -[u(x-h) - 2u(x) + u(x+h)]/h² = f(x)
+
+This discretization leads to a tridiagonal system:
+```
+[  1    0    0  ...  0  ]   [ u₁ ]   [ 0     ]
+[ -1    2   -1  ...  0  ]   [ u₂ ]   [ h²f₂  ]
+[  0   -1    2  ...  0  ]   [ u₃ ] = [ h²f₃  ]
+[ ...               ... ]   [ .. ]   [ ...   ]
+[  0    0    0  ...  1  ]   [ uₙ ]   [ 0     ]
+```
+
+The first and last rows enforce boundary conditions u(a) = 0, u(b) = 0.
+
+## Arguments
+- `grid`: Spatial discretization (Grid1D)
+- `forcing`: Right-hand side function f(x)
+
+## Returns
+- Solution vector u at grid points
+
+## Convergence
+This method is **second-order accurate**: error ~ O(h²)
+
+## Example
+```julia
+grid = Grid1D(0.0, 1.0, 101)
+forcing = ForcingTerm(nothing, x -> π^2 * sin(π*x))
+u = poisson_solver_dirichlet(grid, forcing)
+# Exact solution: u(x) = sin(πx)
+```
 """
 function poisson_solver_dirichlet(grid::Grid1D, forcing::ForcingTerm)
     nx = grid.nx
     h = grid.dx
     
-    # Allocate
+    # Allocate solution vector
     u = zeros(nx)
     
-    # Build tridiagonal system
+    # Build tridiagonal system Au = rhs
     A = zeros(nx, nx)
     rhs = zeros(nx)
     
     for i in 1:nx
         if i == 1
-            # Left BC: u(a) = 0
+            # Left boundary: u(a) = 0
             A[i, i] = 1.0
             rhs[i] = 0.0
         elseif i == nx
-            # Right BC: u(b) = 0
+            # Right boundary: u(b) = 0
             A[i, i] = 1.0
             rhs[i] = 0.0
         else
-            # Interior: -u'' = f
-            # Discretization: -(u[i-1] - 2u[i] + u[i+1])/h^2 = f[i]
+            # Interior points: -u'' = f
+            # Stencil: -(u[i-1] - 2u[i] + u[i+1])/h² = f[i]
+            # Rearranging: -u[i-1] + 2u[i] - u[i+1] = h²f[i]
             A[i, i-1] = -1.0
             A[i, i] = 2.0
             A[i, i+1] = -1.0
@@ -48,7 +109,7 @@ function poisson_solver_dirichlet(grid::Grid1D, forcing::ForcingTerm)
         end
     end
     
-    # Solve linear system
+    # Solve the linear system (direct solve for tridiagonal)
     u = A \ rhs
     return u
 end
